@@ -7,7 +7,7 @@ class Role(Enum):
     ENGINEER =0
     SENIOR_ENGINEER = 1
     MANAGER = 2
-    CONTRIBUTER = 3
+    CONTRIBUTOR = 3
 
 
 
