@@ -1,5 +1,4 @@
 from enum import Enum
-import os
 
 user_list =[]
 
@@ -33,15 +32,23 @@ class User:
             print("No role assigned")
 
     def access_resource(self,id):
-        for element in Resource.resource_block:
-            if element.chip_id == id:
-                for role in self.roles:
-                    if role in element.read:
-                        print("READ ALLOWED ")
-                    elif role in element.wrtie:
-                        print("WRITE ALLOWED")
+        #print("1")
+        try:
+            for element in Resource.resource_block:
+                #print("2")
+                if element.chip_id == id:
+                    if self.roles:
+                        for role in self.roles:
+                            if role in element.read:
+                                print("READ ALLOWED ")
+                            elif role in element.write:
+                                print("WRITE ALLOWED")
+                            else:
+                                print("No role assigned")
                     else:
-                        pass
+                        print("No role assigned")
+        except Exception as e:
+            print("Exception " + str(e))
 
 
 class Admin(User):
@@ -49,43 +56,56 @@ class Admin(User):
         super().__init__(fname,lname,password)
 
     def create_user(self):
-        pswd_flag = True
-        global user_list
-        fname , lname, password = None, None, None
-        while pswd_flag:
-            pswd_flag = False
-            fname , lname , password = input("Enter fname, lname and password separated by space").split('')
-            for element in user_list:
-                if element.pswd == password:
-                    print("Password exists , please try another")
-                    pswd_flag = True
-                    break
+        try:
+            pswd_flag = True
+            global user_list
+            fname , lname, password = None, None, None
+            while pswd_flag:
+                pswd_flag = False
+                fname = input("Enter fname: ")
+                lname = input("Enter lname: ")
+                password = input("Enter password: ")
+                for element in user_list:
+                    if element.pswd == password:
+                        print("Password exists , please try another")
+                        pswd_flag = True
+                        break
 
-        user_obj = User(fname,lname,password)
-        user_list.append(user_obj)
+            user_obj = User(fname,lname,password)
+            user_list.append(user_obj)
+            print("user Added")
+        except Exception as e:
+            print("Exception " + str(e))
 
     def add_role(self,fname , lname ,role):
-        if isinstance(role, Role):
-            raise AttributeError("Not Role Enum Type")
-        global user_list
-        if user_list:
-            for user in user_list:
-                if user.f_name == fname and user.l_name == lname:
-                    user.roles.append(role)
-        else:
-            print("No user exist")
+        try:
+            if isinstance(role, Role):
+                raise AttributeError("Not Role Enum Type")
+            global user_list
+            if user_list:
+                for user in user_list:
+                    if user.f_name == fname and user.l_name == lname:
+                        user.roles.append(role)
+            else:
+                print("No user exist")
+        except Exception as e:
+            print("Exception " +str(e))
 
     def delete_role(self,fname , lname ,role):
-        if isinstance(role, Role):
-            raise AttributeError("Not Role Enum Type")
-        global user_list
-        if user_list:
-            for user in user_list:
-                if user.f_name == fname and user.l_name == lname:
-                    if role in user.roles:
-                        user.roles.remove(role)
-        else:
-            print("No user exist")
+        try:
+            if isinstance(role, Role):
+                raise AttributeError("Not Role Enum Type")
+            global user_list
+            if user_list:
+                for user in user_list:
+                    if user.f_name == fname and user.l_name == lname:
+                        if role in user.roles:
+                            user.roles.remove(role)
+            else:
+                print("No user exist")
+        except Exception as e:
+            print("Exception " + str(e))
+
 
     def add_resource(self,chip_id):
         Resource.add_resource(chip_id)
@@ -100,8 +120,16 @@ class Admin(User):
         else:
             print("No resource available yet")
 
-    def view_roles_user(self,obj):
-        obj.view_roles()
+    def view_roles_user(self, fname, lname):
+        try:
+            global user_list
+            if user_list:
+                for user in user_list:
+                    if user.f_name == fname and user.l_name == lname:
+                        user.view_roles()
+        except Exception as e:
+            print("Exception " +str(e))
+
 
 
 
@@ -121,16 +149,18 @@ class ConfidentialChipsetDoc:
                 print("Already provided access")
 
     def show_read_roles(self):
-        return self.read
+        print("Read privileges")
+        print(self.read)
 
     def show_write_roles(self):
-        return self.write
+        print("Write privileges")
+        print(self.write)
 
     def add_write_privilege(self,role):
         if isinstance(role, Role):
             raise AttributeError("Not Role Enum Type")
         else:
-            if role not in self.read:
+            if role not in self.write:
                 self.write.append(role)
             else:
                 print("Already provided access")
@@ -158,12 +188,19 @@ class Resource:
 
     @classmethod
     def add_resource(cls,id):
-        for element in cls.resource_block:
-            if element.chip_id == id:
-                print("this chipset doc already exists")
-                return
-        newobj = ConfidentialChipsetDoc(id)
-        cls.resource_block.append(newobj)
+        try:
+            if cls.resource_block:
+                for element in cls.resource_block:
+                    if element.chip_id == id:
+                        print("this chipset doc already exists")
+                        return
+            newobj = ConfidentialChipsetDoc(id)
+            newobj.add_read_privilege("ENGINEER")
+            newobj.add_read_privilege("MANAGER")
+            newobj.add_write_privilege("MANAGER")
+            cls.resource_block.append(newobj)
+        except Exception as e:
+            print("Exception "+str(e))
 
     @classmethod
     def remove_resource(cls,id):
@@ -175,50 +212,114 @@ class Resource:
     def view_resources(cls):
         for element in cls.resource_block:
             print(element.chip_id)
+            element.show_read_roles()
+            element.show_write_roles()
 
 class Activity:
     login_type = None
+    admin = None
+    user = None
+
+
+    @classmethod
+    def get_user_obj(cls, fname, password):
+        global user_list
+        if user_list:
+            for user in user_list:
+                if user.f_name == fname and user.pswd == password:
+                    return user
+
+        print("No such user exists")
+        return None
+
 
     @classmethod
     def login(cls):
-        fname = input("Enter fname for login: ")
-        password = input("Enter password for login: ")
-        for i, element in enumerate(user_list):
-            if element.pswd == password and element.f_name == fname and i == 0:
-                cls.login_type = 'admin'
-                print("You are logged in as admin")
-            elif element.pswd == password and element.f_name == fname:
-                print("You are logged in as" + element.f_name)
-                cls.login_type = 'user'
+        try:
+            fname = input("Enter fname for login: ")
+            password = input("Enter password for login: ")
+            for i, element in enumerate(user_list):
+                if element.pswd == password and element.f_name == fname and i == 0:
+                    cls.login_type = 'admin'
+                    print("You are logged in as admin")
+                elif element.pswd == password and element.f_name == fname:
+                    print("You are logged in as: " + element.f_name)
+                    cls.login_type = 'user'
+                    cls.user = cls.get_user_obj(fname, password)
+            cls.show_options()
+        except Exception as e:
+            print("Exception " + str(e))
 
     @classmethod
     def show_options(cls):
-        if cls.login_type == 'admin':
-            choice = input("Press 1 to see resource\n"
-                           "Press 2 to login as another user ")
-            if choice == 1:
-                print("here")
-                Resource.view_resources()
-            if choice ==2 :
-                cls.login()
+        try:
+            if cls.login_type == 'admin':
+                choice = 0
+                while choice !=5:
+                    print("---------------------\nPress 1 to see resource\nPress 2 to login as another user\n"
+                          "Press 3 to create user\nPress 4 to edit role\nPress 5 to exit")
+                    choice = int(input("Enter your choice:"))
+                    if choice == 1:
+                        Resource.view_resources()
+                    elif choice == 2 :
+                        cls.login()
+                    elif choice == 3:
+                        cls.admin.create_user()
+                    elif choice == 4:
+                        print("Enter details of user\n")
+                        fname = input("Enter fname: ")
+                        lname = input("Enter lname: ")
+                        choice_edit = 0
+                        while choice_edit !=5:
+                            print("-------------------------------\nPress 1 to view roles\nPress 2 to add role"
+                                  " \nPress 3 to delete role \nPress 5 to exit")
+                            choice_edit = int(input("Enter your choice: "))
+                            if choice_edit == 1:
+                                cls.admin.view_roles_user(fname,lname)
+                            elif choice_edit ==2:
+                                role = input("Enter any one role from  ENGINEER/SENIOR_ENGINEER/MANAGER/CONTRIBUTOR: ")
+                                cls.admin.add_role(fname, lname,role)
+
+
+            elif cls.login_type == 'user':
+                choice = 0
+                while choice !=3:
+                    print("-----------------------------\n"
+                          "Press 1 to see access resources\nPress 2 to login as another user\nPress 3 to exit")
+                    choice = int(input("Enter your choice:"))
+                    if choice == 1:
+                        id = input("enter resource id: ")
+                        cls.user.access_resource(id)
+                    elif choice == 2:
+                        cls.login()
+        except Exception as e:
+            print("Exception as "+ str(e))
 
     @classmethod
     def start_activity(cls):
-        global user_list
-        print("Initialising system with some resource,admin account , user account")
-        fname = input("Enter fname: ")
-        lname = input("Enter lname: ")
-        password = input("Enter pasword: ")
-        Ad = Admin(fname,lname,password)
-        user_list.append(Ad)
-        fname = input("Enter fname: ")
-        lname = input("Enter lname: ")
-        password = input("Enter pasword: ")
-        user1 = User(fname,lname,password)
-        user_list.append(user1)
-        print("Creating one resource with id 'MTK12477' ")
-        Resource.add_resource('MTK12477')
-        cls.login()
-        cls.show_options()
+        try:
+            global user_list
+            print("Initialising system with some resource,admin account , user account")
+            print("Enter Admin details")
+            fname = input("Enter fname: ")
+            lname = input("Enter lname: ")
+            password = input("Enter pasword: ")
+            cls.admin = Admin(fname,lname,password)
+            cls.admin.roles=["ENGINEER", "SENIOR_ENGINEER", "MANAGER", "CONTRIBUTOR"]
+            user_list.append(cls.admin)
+            print("Enter user1 details,please enter different details other than admin")
+            fname = input("Enter fname: ")
+            lname = input("Enter lname: ")
+            password = input("Enter pasword: ")
+            user1 = User(fname,lname,password)
+            user_list.append(user1)
+            print("Creating one resource with id 'MTK12477' ")
+            Resource.add_resource('MTK12477')
+            Resource.view_resources()
+            cls.login()
+        except Exception as e:
+            print("Exception " +str(e))
 
-Activity.start_activity()
+
+if __name__ == "__main__":
+    Activity.start_activity()
